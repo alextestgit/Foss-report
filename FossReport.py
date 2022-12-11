@@ -9,17 +9,40 @@ import xlwings as xw
 INPUT_FOLDER = "\\sources\\"
 OUTPUT_FOLDER = "output"
 SECTIONS = {"Critical vulnerabilities": "Critical", "High vulnerabilities": "High"}
+column_names = ["Product", "FOSS name", "FOSS version", "Latest clean version", "Nearest clean version", "Defect #",
+                "Comments", "Communication Platform", "Severity"]
 
-new_report = []
-xlsx_files = []
-csv_files = []
-csv_reader = None
+column_size = [11, 30, 13, 27, 35, 11, 30, 25, 10]
+
+report_name = "Summary_Foss_Report_"
+
+new_report, xlsx_files, csv_files = [], [], []
+csv_reader, msg_date = None, None
 
 
-def openExcel(full_filename):
-    global ws
-    ws = xw.Book(full_filename).sheets[0]
+def create_report():
+    wb = xw.Book()
+    ws = wb.sheets[0]
+    row_num = 1
+    # Write the column names to the Excel file
+    for i, column_name in enumerate(column_names):
+        ws.range((row_num, i + 1)).value = column_name
 
+    # Set the font of the column names to bold
+    ws.range((row_num, 1), (row_num, len(column_names))).api.Font.Bold = True
+    row_num += 2
+    # Write the dates to the Excel file
+    for i, date in enumerate(new_report, row_num):
+        ws.range((i, 1)).value = date
+
+    # Set the width of each column to the maximum length of the data in that column
+    for i, column_width in enumerate(column_size):
+        ws.range((row_num, i + 1)).column_width = column_width
+
+    ws.used_range.api.AutoFilter(Field := 1)
+
+    report_name_final = f'{SOURCE_FOLDER}\\{report_name}_{msg_date}.xlsx'
+    wb.save(report_name_final)
 
 
 def work_with_csv(filename):
@@ -29,7 +52,7 @@ def work_with_csv(filename):
         for section_name, severity in SECTIONS.items():
             move2section_date(section_name)
             product_name = filename.split("\\")[-1].split("_")[0]
-            get_section_data(product_name,severity)
+            get_section_data(product_name, severity)
             "".split()
 
 
@@ -51,7 +74,6 @@ def get_section_data(product, severity):
         new_report.append(report_row)
 
 
-
 def extract_excels_from_msg():
     for file_ in os.listdir(SOURCE_FOLDER):
         if file_.endswith(".msg"):
@@ -66,14 +88,14 @@ def extract_excels_from_msg():
 
 
 def xls_name(msg):
-    date = '_'.join(msg.date.split()[:-2]).replace(',', '')
+    global msg_date
+    msg_date = '_'.join(msg.date.split()[:-2]).replace(',', '')
     out_name = msg.subject.split("-")[1].strip().replace(':', '')
-    return f'{SOURCE_FOLDER}{out_name}_{date}.xls'
+    return f'{SOURCE_FOLDER}{out_name}_{msg_date}.xls'
 
 
 def is_folder_empty(path: str) -> bool:
     return len(os.listdir(path)) == 0
-
 
 
 def convert_xls2csv():
@@ -89,6 +111,10 @@ def get_csv_files() -> list:
     # return csv_files
 
 
+def createNewReport():
+    pass
+
+
 # --------- MAIN ------------
 directory_path = os.getcwd()
 SOURCE_FOLDER = directory_path + INPUT_FOLDER
@@ -96,11 +122,10 @@ SOURCE_FOLDER = directory_path + INPUT_FOLDER
 extract_excels_from_msg()
 convert_xls2csv()
 get_csv_files()
-# for file in xlsx_files:
-
 for file in csv_files:
     work_with_csv(file)
+create_report()
 
-print("\n\n\n--- data ")
-for row in new_report:
-    print(row)
+# print("\n\n\n--- data ")
+# for row in new_report:
+#     print(row)
