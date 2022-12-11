@@ -1,4 +1,7 @@
 # fossvenv/Lib/site-packages/xls2xlsx/htmlxls2xlsx.py update line 37
+import csv
+
+import fossOutlook
 import os
 import glob
 # import subprocess
@@ -12,10 +15,13 @@ import xlwings as xw
 
 INPUT_FOLDER = "\\sources\\"
 OUTPUT_FOLDER = "output"
-SECTIONS = ["Critical vulnerabilities", "High"]
-critical = []
-high = []
+SECTIONS = {"Critical vulnerabilities": "Critical", "High vulnerabilities": "High"}
+# critical = []
+# high = []
+new_report = []
 xlsx_files = []
+csv_files = []
+csv_reader = None
 
 
 def remove_changes(value):
@@ -56,12 +62,47 @@ def pint_data(row, name):
             break
 
 
+def work_with_csv(filename):
+    global csv_reader
+    with open(filename, 'r') as csv_file:
+        csv_reader = csv.reader(csv_file, dialect='excel')
+        for section_name, severity in SECTIONS.items():
+            move2section_date(section_name)
+            product_name = filename.split("\\")[-1].split("_")[0]
+            get_section_data(product_name,severity)
+            "".split()
+
+
+def move2section_date(section_name):
+    for row in csv_reader:
+        if section_name in row[0]:
+            next(csv_reader)
+            next(csv_reader)
+            return
+
+
+def get_section_data(product, severity):
+    for row in csv_reader:
+        if row[0] == '':
+            return
+        report_row = row
+        report_row.insert(0, product)
+        report_row.insert(len(row), severity)
+        new_report.append(report_row)
+
+    # def work_with_csv(filename):
+    open_csv_file(filename)
+    for section_name in SECTIONS:
+        move2section_date(section_name)
+        get_section_data()
+
+
 def work_with_excel(file):
     openExcel(file)
-    current_row = 1
+    section_row = 1
     for section_name in SECTIONS:
-        current_row = get_section_row(current_row, section_name)
-        pint_data(current_row, section_name)
+        section_row = get_section_row(section_row, section_name)
+        pint_data(section_row, section_name)
 
 
 #
@@ -85,7 +126,9 @@ def extract_excels_from_msg():
             attachments = msg.attachments
             for att in attachments:
                 if att.extension == ".xls":
-                    with open(xls_name(msg), 'wb') as fl:
+                    att_name = xls_name(msg)
+                    xlsx_files.append(att_name)
+                    with open(att_name, 'wb') as fl:
                         fl.write(att.data)
 
 
@@ -94,8 +137,10 @@ def xls_name(msg):
     out_name = msg.subject.split("-")[1].strip().replace(':', '')
     return f'{SOURCE_FOLDER}{out_name}_{date}.xls'
 
+
 def is_folder_empty(path: str) -> bool:
     return len(os.listdir(path)) == 0
+
 
 # def convert_xls2xlsx():
 #     # https://stackoverflow.com/questions/1858195/convert-xls-to-csv-on-command-line
@@ -109,32 +154,31 @@ def is_folder_empty(path: str) -> bool:
 #         print(f'Converter output: {returned_output}')
 #         xlsx_files.append(xls_file)
 
-def convert_xls2xlsx():
-    cmd = f'{directory_path}\XlsToCsv1.vbs {SOURCE_FOLDER}'
+def convert_xls2csv():
+    cmd = f'{directory_path}\XlsToCsv.vbs {SOURCE_FOLDER}'
     returned_output = os.system(cmd)
     print(returned_output)
 
 
-def get_csv_files(path: str) -> List[str]:
-    csv_files = []
-    for file in os.listdir(path):
+def get_csv_files() -> list:
+    for file in os.listdir(SOURCE_FOLDER):
         if file.endswith(".csv"):
-            csv_files.append(file)
-    return csv_files
+            csv_files.append(f'{SOURCE_FOLDER}\\{file}')
+    # return csv_files
+
 
 # --------- MAIN ------------
 directory_path = os.getcwd()
 SOURCE_FOLDER = directory_path + INPUT_FOLDER
 
 extract_excels_from_msg()
-convert_xls2xlsx()
-for file in xlsx_files:
-    print(f'File name {file}')
-    work_with_excel(file)
+convert_xls2csv()
+get_csv_files()
+# for file in xlsx_files:
 
-print("\n\n\n--- CRITICAL ")
-for row in critical:
-    print(row)
-print("---------- HIGH ")
-for row in high:
+for file in csv_files:
+    work_with_csv(file)
+
+print("\n\n\n--- data ")
+for row in new_report:
     print(row)
