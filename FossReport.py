@@ -1,7 +1,7 @@
 # fossvenv/Lib/site-packages/xls2xlsx/htmlxls2xlsx.py update line 37
 import csv
-
-import fossOutlook
+import win32com.client
+# import fossOutlook
 import os
 import extract_msg
 import xlwings as xw
@@ -20,6 +20,24 @@ new_report, xlsx_files, csv_files = [], [], []
 csv_reader, msg_date = None, None
 
 
+# ---------  Outlook ----------------
+
+def login2microsoft_outlook():
+    username = "AlexBer@Amdocs.com"
+    password = "Boris19!"
+    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    outlook.Session.Logon(username, password)
+    return outlook
+
+
+def read_emails():
+    folder = outlook.Session.GetDefaultFolder(6).Folders["Impotent"].Folders["Amit Datar"]
+    for email1 in folder.Items:
+        yield email1
+
+
+#  ----------------
+
 def create_report():
     wb = xw.Book()
     ws = wb.sheets[0]
@@ -30,7 +48,8 @@ def create_report():
 
     # Set the font of the column names to bold
     ws.range((row_num, 1), (row_num, len(column_names))).api.Font.Bold = True
-    row_num += 2
+    row_num += 1
+    ws.used_range.api.AutoFilter(Field := 1)
     # Write the dates to the Excel file
     for i, date in enumerate(new_report, row_num):
         ws.range((i, 1)).value = date
@@ -38,8 +57,6 @@ def create_report():
     # Set the width of each column to the maximum length of the data in that column
     for i, column_width in enumerate(column_size):
         ws.range((row_num, i + 1)).column_width = column_width
-
-    ws.used_range.api.AutoFilter(Field := 1)
 
     report_name_final = f'{SOURCE_FOLDER}\\{report_name}_{msg_date}.xlsx'
     wb.save(report_name_final)
@@ -52,7 +69,7 @@ def work_with_csv(filename):
         for section_name, severity in SECTIONS.items():
             move2section_date(section_name)
             product_name = filename.split("\\")[-1].split("_")[0]
-            get_section_data(product_name, severity)
+            read_section_data(product_name, severity)
             "".split()
 
 
@@ -64,7 +81,7 @@ def move2section_date(section_name):
             return
 
 
-def get_section_data(product, severity):
+def read_section_data(product, severity):
     for row in csv_reader:
         if row[0] == '':
             return
@@ -74,17 +91,32 @@ def get_section_data(product, severity):
         new_report.append(report_row)
 
 
-def extract_excels_from_msg():
+"""
+Find Outlook files (*.msg) in the source folder and
+Extract attached Excels (*.xls) from the msg to source folder.
+"""
+
+
+def extract_excels_from_msgs():
     for file_ in os.listdir(SOURCE_FOLDER):
         if file_.endswith(".msg"):
             msg = extract_msg.Message(SOURCE_FOLDER + file_)
-            attachments = msg.attachments
-            for att in attachments:
-                if att.extension == ".xls":
-                    att_name = xls_name(msg)
-                    xlsx_files.append(att_name)
-                    with open(att_name, 'wb') as fl:
-                        fl.write(att.data)
+            extract_excels(msg)
+
+
+def extract_excels(msg):
+    global msg_date
+    attachments = msg.attachments
+    for att in attachments:
+        att_name = att.FileName
+        if att_name.endswith(".xls"):
+            product_name = msg.subject.split("-")[1].strip().replace(':', '')
+            msg_date = str(msg.ReceivedTime).split()[0]
+            out_name = f'{SOURCE_FOLDER}{product_name}_{msg_date}.xls'
+            att.SaveAsFile(out_name)
+            # xlsx_files.append(att_name)
+            # with open(out_name, 'wb') as fl:
+            #     fl.write(att.data)
 
 
 def xls_name(msg):
@@ -111,15 +143,22 @@ def get_csv_files() -> list:
     # return csv_files
 
 
-def createNewReport():
-    pass
+def clean_old_files():
+    filelist = [f for f in os.listdir(SOURCE_FOLDER)]
+    for f in filelist:
+        os.remove(os.path.join(SOURCE_FOLDER, f))
 
 
 # --------- MAIN ------------
+
 directory_path = os.getcwd()
 SOURCE_FOLDER = directory_path + INPUT_FOLDER
 
-extract_excels_from_msg()
+clean_old_files()
+outlook = login2microsoft_outlook()
+for email in read_emails():
+    extract_excels(email)
+
 convert_xls2csv()
 get_csv_files()
 for file in csv_files:
