@@ -1,9 +1,5 @@
 # fossvenv/Lib/site-packages/xls2xlsx/htmlxls2xlsx.py update line 37
-import asyncio
 import csv
-
-from datetime import datetime
-
 import win32com.client
 # import fossOutlook
 import os
@@ -27,8 +23,8 @@ csv_reader, msg_date = None, None
 # ---------  Outlook ----------------
 
 def login2microsoft_outlook():
-    username = "****"
-    password = "****"
+    username = "AlexBer@Amdocs.com"
+    password = "Boris19!"
     outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
     outlook.Session.Logon(username, password)
     return outlook
@@ -100,12 +96,12 @@ Find Outlook files (*.msg) in the source folder and
 Extract attached Excels (*.xls) from the msg to source folder.
 """
 
-#
-# def extract_excels_from_msgs():
-#     for file_ in os.listdir(SOURCE_FOLDER):
-#         if file_.endswith(".msg"):
-#             msg = extract_msg.Message(SOURCE_FOLDER + file_)
-#             extract_excels(msg)
+
+def extract_excels_from_msgs():
+    for file_ in os.listdir(SOURCE_FOLDER):
+        if file_.endswith(".msg"):
+            msg = extract_msg.Message(SOURCE_FOLDER + file_)
+            extract_excels(msg)
 
 
 def extract_excels(msg):
@@ -118,7 +114,9 @@ def extract_excels(msg):
             msg_date = str(msg.ReceivedTime).split()[0]
             out_name = f'{SOURCE_FOLDER}{product_name}_{msg_date}.xls'
             att.SaveAsFile(out_name)
-
+            # xlsx_files.append(att_name)
+            # with open(out_name, 'wb') as fl:
+            #     fl.write(att.data)
 
 
 def xls_name(msg):
@@ -151,40 +149,21 @@ def clean_old_files():
         os.remove(os.path.join(SOURCE_FOLDER, f))
 
 
-async def read_emails_from_outllok():
-    for f in asyncio.as_completed([extract_excels(email) for email in read_emails()]):
-        result = await f
-    #
-
-
 # --------- MAIN ------------
-start = datetime.now()
+
 directory_path = os.getcwd()
 SOURCE_FOLDER = directory_path + INPUT_FOLDER
 
 clean_old_files()
 outlook = login2microsoft_outlook()
-
-
-
-
 for email in read_emails():
     extract_excels(email)
-# read_emails_from_outllok()
-# for f in asyncio.as_completed([x(i) for i in range(10)]):
-#     result = await f
-
-
 
 convert_xls2csv()
 get_csv_files()
 for file in csv_files:
     work_with_csv(file)
 create_report()
-end = datetime.now()
-
-td = (end - start).total_seconds() * 10**3
-print(f"The time of execution of above program is : {td:.03f}ms")
 
 # print("\n\n\n--- data ")
 # for row in new_report:
