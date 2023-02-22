@@ -43,8 +43,8 @@ def save_email(email, save_dir):
 # Main program
 if __name__ == "__main__":
     # Log in to Microsoft Outlook
-    username = "AlexBer@Amdocs.com"
-    password = "Boris19!"
+    username = "*****"
+    password = "****"
     outlook = login(username, password)
 
     # Read emails from the Inbox folder
