@@ -23,8 +23,8 @@ csv_reader, msg_date = None, None
 # ---------  Outlook ----------------
 
 def login2microsoft_outlook():
-    username = "AlexBer@Amdocs.com"
-    password = "Boris19!"
+    username = "*****"
+    password = "****"
     outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
     outlook.Session.Logon(username, password)
     return outlook
